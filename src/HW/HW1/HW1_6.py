@@ -1,14 +1,14 @@
 from pathlib import Path
 import json
-from typing import Any, Optional
+from typing import Optional
 
 FILE_PATH = Path("products.txt")
-product_data: list['Product'] = []
+product_data: list[Product] = []
 
 
 class Product:
 
-    def __init__(self, name: str, count: int, saved: bool) -> None:
+    def __init__(self, name: str, count: int, saved: bool = False) -> None:
         self.name = name
         self.count = count
         self.saved = saved
@@ -17,18 +17,18 @@ class Product:
         return f"name: {self.name}, count: {self.count}, is saved: {self.saved}"
 
     def obj_to_dict(self) -> dict:
-        return {"name": self.name, "count": self.count, "saved": self.saved}
+        return {"name": self.name, "count": self.count}
 
     @staticmethod
-    def dict_to_obj(dic: dict) -> Product:
-        return Product(dic["name"], dic["count"], dic["saved"])
+    def dict_to_obj(dic: dict, saved = False) -> 'Product':
+        return Product(dic["name"], dic["count"], saved)
 
 
 def search(name: str) -> Optional[Product]:
     products_file = get_all_from_file()
     for product in products_file:
         if name.lower() in product.name.lower():
-            return Product.dict_to_obj(product)
+            return product
 
     for product in product_data:
         if name.lower() in product.name.lower():
@@ -37,8 +37,11 @@ def search(name: str) -> Optional[Product]:
     return None
 
 
-def get_all_from_file() -> Any:
-    return [Product.dict_to_obj(product) for product in json.loads(FILE_PATH.read_text())]
+def get_all_from_file() -> list[Product]:
+    if FILE_PATH.exists() and FILE_PATH.stat().st_size > 0:
+        products_dict = json.loads(FILE_PATH.read_text())
+        return [Product.dict_to_obj(p, True) for p in products_dict]
+    return []
 
 
 def check_file():
@@ -58,6 +61,7 @@ def save() -> None:
             existing.saved = True
             write_to_file(existing)
         else:
+            product.saved = True
             write_to_file(product)
     product_data.clear()
     print("Saved successfully.")
@@ -71,6 +75,18 @@ def add(product_input: Product) -> None:
     product_data.append(product_input)
 
 
+def delete_from_file(product: Product) -> bool:
+    products = get_all_from_file()
+
+    for i, product in enumerate(products):
+        if product.name.lower() == product.name.lower():
+            products.pop(i)
+            products_dict = [p.obj_to_dict() for p in products]
+            FILE_PATH.write_text(json.dumps(products_dict, indent=4))
+            return True
+
+    return False
+
 def sell(product: Product) -> None:
     found = search(product.name)
 
@@ -83,22 +99,28 @@ def sell(product: Product) -> None:
         return
 
     found.count -= product.count
-    write_to_file(found)
-    print("Sold successfully.")
+
+    if found.count == 0:
+        delete_from_file(found)
+        print(f"Product '{found.name}' sold out and removed from file.")
+    else:
+        write_to_file(found)
+        print("Sold successfully.")
 
 
 def write_to_file(product: Product):
-    products_data = get_all_from_file()
+    products = get_all_from_file()
 
-    for i, p in enumerate(products_data):
-        p = Product.dict_to_obj(p)
+    for i, p in enumerate(products):
         if p.name.lower() == product.name.lower():
-            products_data[i] = product.obj_to_dict()
-            FILE_PATH.write_text(json.dumps(products_data, indent=4))
+            products[i] = product
+            products_dict = [p.obj_to_dict() for p in products]
+            FILE_PATH.write_text(json.dumps(products_dict, indent=4))
             return
 
-    products_data.append(product.obj_to_dict())
-    FILE_PATH.write_text(json.dumps(products_data, indent=4))
+    products.append(product)
+    products_dict = [p.obj_to_dict() for p in products]
+    FILE_PATH.write_text(json.dumps(products_dict, indent=4))
 
 
 def get_all_products():
@@ -109,10 +131,10 @@ def report() -> dict[str, float]:
     products = get_all_products()
     if not products:
         return {
-            "count_of_saved": sum(p.count for p in products if p.saved),
-            "total_count": sum(p.count for p in products),
-            "max_count": max(p.count for p in products),
-            "min_count": min(p.count for p in products),
+            "count_of_saved": 0,
+            "total_count": 0,
+            "max_count": 0,
+            "min_count": 0,
         }
 
     return {
@@ -138,31 +160,44 @@ def menu():
 
     choice = input(menu_print)
     match choice:
-        case "1":
+
+        case "1": #Add
             product = get_product_from_input()
             add(product)
-        case "2":
+
+        case "2": #sell
             product = get_product_from_input()
             sell(product)
-        case "3":
+
+        case "3": #Search
             name = input("Enter product name: ")
             product = search(name)
             if product:
                 print(product)
             else:
                 print("Product not found.")
-        case "4":
-            for product in show():
-                print(product)
-        case "5":
+
+        case "4": #Show
+            products = show()
+            if products:
+                [print(product) for product in products]
+            else:
+                print("List of products is empty.")
+
+        case "5": #Save
             save()
-        case "6":
+
+        case "6": #report
             report_data = report()
             for key, value in report_data.items():
                 print(f"{key}: {value}")
-        case "7":
+
+        case "7": #Exit
             print("Goodbye!")
             exit()
+
+        case _:
+            print("Invalid choice.")
 
 
 def get_product_from_input():
