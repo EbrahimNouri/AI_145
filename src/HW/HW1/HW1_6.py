@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 import json
 from typing import Optional
@@ -15,7 +14,7 @@ class Product:
     self.saved = saved
 
   def __str__(self) -> str:
-    return f"name: {self.name}:<12, count: {self.count}, is saved: {self.saved}"
+    return f"name: {self.name:<12} | count: {self.count:<5} | saved: {self.saved}"
 
   def obj_to_dict(self) -> dict:
     return {"name": self.name, "count": self.count}
