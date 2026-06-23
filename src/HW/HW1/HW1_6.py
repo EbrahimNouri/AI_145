@@ -20,7 +20,7 @@ class Product:
     return {"name": self.name, "count": self.count}
 
   @staticmethod
-  def dict_to_obj(dic: dict, saved=False) -> 'Product':
+  def dict_to_obj(dic: dict, saved: bool = False) -> Product:
     return Product(dic["name"], dic["count"], saved)
 
 
@@ -31,7 +31,7 @@ def search(name: str, include_file: bool = True, include_memory: bool = True) ->
         return product
 
   if include_file:
-    products_file = get_all_from_file()
+    products_file = get_all_products(True, False)
     for product in products_file:
       if name.lower() in product.name.lower():
         return product
@@ -39,20 +39,9 @@ def search(name: str, include_file: bool = True, include_memory: bool = True) ->
   return None
 
 
-def get_all_from_file() -> list[Product]:
-  if FILE_PATH.exists() and FILE_PATH.stat().st_size > 0:
-    products_dict = json.loads(FILE_PATH.read_text())
-    return [Product.dict_to_obj(p, True) for p in products_dict]
-  return []
-
-
 def check_file():
   if not FILE_PATH.exists() or FILE_PATH.stat().st_size == 0:
     FILE_PATH.write_text(json.dumps([]))
-
-
-def show() -> list[Product]:
-  return get_all_from_file() + product_data
 
 
 def save() -> None:
@@ -78,7 +67,7 @@ def add(product_input: Product) -> None:
 
 
 def delete_from_file(product: Product) -> bool:
-  products = get_all_from_file()
+  products = get_all_products(True, False)
 
   for i, p in enumerate(products):
     if p.name.lower() == product.name.lower():
@@ -112,7 +101,7 @@ def sell(product: Product) -> None:
 
 
 def write_to_file(product: Product):
-  products = get_all_from_file()
+  products = get_all_products(True, False)
 
   for i, p in enumerate(products):
     if p.name.lower() == product.name.lower():
@@ -126,8 +115,15 @@ def write_to_file(product: Product):
   FILE_PATH.write_text(json.dumps(products_dict, indent=4))
 
 
-def get_all_products():
-  return get_all_from_file() + product_data
+def get_all_products(include_file: bool = True, include_memory: bool = True) -> list[Product]:
+  products = []
+  if include_file:
+    products_dict = json.loads(FILE_PATH.read_text())
+    get_all_from_file = [Product.dict_to_obj(p, True) for p in products_dict]
+    products.extend(get_all_from_file)
+  if include_memory:
+    products.extend(product_data)
+  return products
 
 
 def report() -> dict[str, float]:
@@ -181,7 +177,7 @@ def menu():
         print("Product not found.")
 
     case "4":  # Show
-      products = show()
+      products = get_all_products(True, True)
       if products:
         for product in products:
           print(product)
