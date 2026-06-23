@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 import json
 from typing import Optional
@@ -14,7 +15,7 @@ class Product:
     self.saved = saved
 
   def __str__(self) -> str:
-    return f"name: {self.name}, count: {self.count}, is saved: {self.saved}"
+    return f"name: {self.name}:<12, count: {self.count}, is saved: {self.saved}"
 
   def obj_to_dict(self) -> dict:
     return {"name": self.name, "count": self.count}
@@ -24,15 +25,17 @@ class Product:
     return Product(dic["name"], dic["count"], saved)
 
 
-def search(name: str) -> Optional[Product]:
-  products_file = get_all_from_file()
-  for product in products_file:
-    if name.lower() in product.name.lower():
-      return product
+def search(name: str, include_file: bool = True, include_memory: bool = True) -> Optional[Product]:
+  if include_memory:
+    for product in product_data:
+      if name.lower() in product.name.lower():
+        return product
 
-  for product in product_data:
-    if name.lower() in product.name.lower():
-      return product
+  if include_file:
+    products_file = get_all_from_file()
+    for product in products_file:
+      if name.lower() in product.name.lower():
+        return product
 
   return None
 
@@ -55,8 +58,8 @@ def show() -> list[Product]:
 
 def save() -> None:
   for product in product_data:
-    existing = search(product.name)
-    if existing is not None:
+    existing = search(product.name, include_file=False)
+    if existing is not None and existing is not product:
       existing.count += product.count
       existing.saved = True
       write_to_file(existing)
@@ -78,8 +81,8 @@ def add(product_input: Product) -> None:
 def delete_from_file(product: Product) -> bool:
   products = get_all_from_file()
 
-  for i, product in enumerate(products):
-    if product.name.lower() == product.name.lower():
+  for i, p in enumerate(products):
+    if p.name.lower() == product.name.lower():
       products.pop(i)
       products_dict = [p.obj_to_dict() for p in products]
       FILE_PATH.write_text(json.dumps(products_dict, indent=4))
@@ -181,7 +184,8 @@ def menu():
     case "4":  # Show
       products = show()
       if products:
-        print(products)
+        for product in products:
+          print(product)
       else:
         print("List of products is empty.")
 
@@ -217,4 +221,7 @@ def main():
 
 
 if __name__ == "__main__":
-  main()
+  try:
+    main()
+  except Exception as e:
+    print("unexpected error:", e)
