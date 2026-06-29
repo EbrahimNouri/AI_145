@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-FILE_PATH = Path("books.txt")
+FILE_PATH = Path("books.json")
 
 
 class Book:

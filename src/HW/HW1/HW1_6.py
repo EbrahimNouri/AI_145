@@ -2,8 +2,17 @@ from pathlib import Path
 import json
 from typing import Optional
 
-FILE_PATH = Path("products.txt")
+USE_JSON = False
 product_local: list[Product] = []
+
+
+def get_file_path() -> Path:
+    if USE_JSON:
+        return Path("products.json")
+    return Path("products.txt")
+
+
+FILE_PATH = get_file_path()
 
 
 class Product:
@@ -67,8 +76,7 @@ def delete_from_file(product: Product) -> bool:
   for i, p in enumerate(products):
     if p.name.lower() == product.name.lower():
       products.pop(i)
-      products_dict = [p.obj_to_dict() for p in products]
-      FILE_PATH.write_text(json.dumps(products_dict, indent=4))
+      write_products_to_file(products)
       return True
 
   return False
@@ -95,33 +103,55 @@ def sell(product: Product) -> None:
     print("Sold successfully.")
 
 
+def write_products_to_file(products: list[Product]):
+  if USE_JSON:
+    products_dict = [p.obj_to_dict() for p in products]
+    FILE_PATH.write_text(json.dumps(products_dict, indent=4))
+  else:
+    lines = [f"{p.name}-{p.count}" for p in products]
+    FILE_PATH.write_text("\n".join(lines))
+
+
 def write_to_file(product: Product):
   products = get_all_products(include_file=True, include_memory=False)
 
   for i, p in enumerate(products):
     if p.name.lower() == product.name.lower():
       products[i] = product
-      products_dict = [p.obj_to_dict() for p in products]
-      FILE_PATH.write_text(json.dumps(products_dict, indent=4))
+      write_products_to_file(products)
       return
 
   products.append(product)
-  products_dict = [p.obj_to_dict() for p in products]
-  FILE_PATH.write_text(json.dumps(products_dict, indent=4))
+  write_products_to_file(products)
+
+
+def read_products_from_file() -> list[Product]:
+  if USE_JSON:
+    products_dict = json.loads(FILE_PATH.read_text())
+    return [Product.dict_to_obj(p, True) for p in products_dict]
+  else:
+    lines = FILE_PATH.read_text().strip().split("\n")
+    products = []
+    for line in lines:
+      if not line.strip():
+        continue
+      parts = line.split("-")
+      name = parts[0]
+      count = int(parts[1])
+      products.append(Product(name, count, True))
+    return products
 
 
 def get_all_products(include_file: bool = True, include_memory: bool = True) -> list[Product]:
   products = []
   if include_file:
-    products_dict = json.loads(FILE_PATH.read_text())
-    get_all_from_file = [Product.dict_to_obj(p, True) for p in products_dict]
-    products.extend(get_all_from_file)
+    products.extend(read_products_from_file())
   if include_memory:
     products.extend(product_local)
   return products
 
 
-def report() -> dict[str, int]:
+def report() -> dict:
   products = get_all_products(include_file=True, include_memory=True)
   if not products:
     return {
@@ -134,7 +164,9 @@ def report() -> dict[str, int]:
   return {
     "count_of_saved": sum(p.count for p in products if p.saved),
     "total_count": sum(p.count for p in products),
+    "max_name": max(p.name for p in products if p.saved),
     "max_count": max(p.count for p in products if p.saved),
+    "min_name": min(p.name for p in products if p.saved),
     "min_count": min(p.count for p in products if p.saved),
   }
 
@@ -206,7 +238,10 @@ def get_product_from_input():
 
 def check_file():
   if not FILE_PATH.exists() or FILE_PATH.stat().st_size == 0:
-    FILE_PATH.write_text(json.dumps([]))
+    if USE_JSON:
+      FILE_PATH.write_text(json.dumps([]))
+    else:
+      FILE_PATH.write_text("")
 
 
 def main():
