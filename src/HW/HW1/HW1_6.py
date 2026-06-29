@@ -121,8 +121,8 @@ def get_all_products(include_file: bool = True, include_memory: bool = True) -> 
   return products
 
 
-def report() -> dict[str, float]:
-  products = get_all_products(include_file=True, include_memory=False)
+def report() -> dict[str, int]:
+  products = get_all_products(include_file=True, include_memory=True)
   if not products:
     return {
       "count_of_saved": 0,
@@ -134,8 +134,8 @@ def report() -> dict[str, float]:
   return {
     "count_of_saved": sum(p.count for p in products if p.saved),
     "total_count": sum(p.count for p in products),
-    "max_count": max(p.count for p in products),
-    "min_count": min(p.count for p in products),
+    "max_count": max(p.count for p in products if p.saved),
+    "min_count": min(p.count for p in products if p.saved),
   }
 
 
